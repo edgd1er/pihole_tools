@@ -63,3 +63,8 @@ options:
 -v, --verbose  More output.
 -w, --write    save modified file
 ```
+
+custom.list format:
+```bash
+192.168.0.1   server1.domain.tld server2.domain.tld server3.domain.tld
+```

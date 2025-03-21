@@ -1,0 +1,4 @@
+# Custom DNS entries (HOSTS file)
+#<ip> A-NAME CNAME ....
+192.168.0.1   server1.domain.tld server2.domain.tld server3.domain.tld
+192.168.0.10  server11.domain.tld server12.domain.tld server13.domain.tld
