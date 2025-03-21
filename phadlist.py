@@ -16,13 +16,10 @@ import os.path
 import socket
 import sys
 import urllib
-from functools import reduce
 from typing import List
 
 import requests
-from PIL.ImageChops import constant
-from more_itertools import first
-from requests import __version__, Request
+from requests import Request
 
 # Variables
 LDIR = os.path.dirname(os.path.realpath(__file__))
@@ -48,7 +45,7 @@ class OneList():
     self.url: str = url
     self.group: List[str] = group.split(',')
     self.comment: str = comment
-    self.groups_id: List[int] = None  # most of the time group id is not create when the file is loaded
+    self.groups_id: List[int] = []  # most of the time group id is not create when the file is loaded
 
   def get_url(self):
     return f'{self.url}'
@@ -80,7 +77,6 @@ def getpostapi(apiconfig: {} = None, path: str = "", method: str = "get", payloa
   """
   url = f'https://{apiconfig.get("fqdn")}/api/{path}'
   data = {}
-  #logger.debug(f'method: {method}, url: {url}, headers: {apiconfig.get("session").headers}, payload: {payload}')
 
   r = Request(method=method, url=url, data=json.dumps(payload))
   prepped = apiconfig.get('session').prepare_request(r)
@@ -156,13 +152,13 @@ def close_session(apiconfig: {} = None, close_all: bool = False) -> {}:
   logger.info(f'Closed sessions: {c + 1}')
 
 
-def get_version(apiconfig: {}) -> {}:
+def get_version(apiconfig:{}=None) -> {}:
   version = getpostapi(path='info/version', method='get', apiconfig=apiconfig)
   logger.debug(f'type: {type(version)}, json: {version}')
   return version
 
 
-def get_lists(apiconfig: {} = None) -> {}:
+def get_lists(apiconfig:{} = None) -> {}:
   data = getpostapi(path='lists', apiconfig=apiconfig, method='GET')
   lists = data['lists']
   took = data['took']
@@ -197,15 +193,12 @@ def removeList(type: str = 'phtool', apiconfig: {} = None) -> {}:
   if type == 'reset':
     todelete = list(filter(lambda x: x['comment'] not in 'Pi-hole defaults', apilists))
 
-  logger.info(f'requested: {type}, {len(todelete)} lists to delete: {todelete}')
+  logger.debug(f'requested: {type}, # to delete: {len(todelete)} lists to delete: {todelete}')
+  logger.info(f'requested: {type}, # to delete: {len(todelete)}')
   c = 0
   items = []
   for l in todelete:
-    encoded_url = urllib.parse.quote(l['address'], safe='')
-    # data = getpostapi(path=f'lists/{encoded_url}?', method='DELETE', apiconfig=apiconfig)
     payload = {'item': l['address'], 'type': l['type']}
-    # if data is None:
-    #  logger.warning(f'not deleted list: {l["address"]}')
     items.append(payload)
     c += 1
   if len(items) > 0:
@@ -239,7 +232,7 @@ def addGroup(groups: List[str] = None, apiconfig:{}=None) -> {}:
   return r
 
 
-def addGroups(groups: [] = None) -> {}:
+def addGroups(apiconfig:{}=None, groups: [] = None) -> {}:
   if groups == None or len(groups) == 0:
     logger.warning('No group given. Exiting')
     return
@@ -249,7 +242,7 @@ def addGroups(groups: [] = None) -> {}:
   return r
 
 
-def removeGroup(group: str = ""):
+def removeGroup(apiconfig:{}=None, group: str = ""):
   if group == "":
     logger.warning('No group given. Exiting')
     return
@@ -327,9 +320,8 @@ def get_list_of_groups_from_loaded_list(loaded_list):
 def process_add(apiconfig: {} = None, api_groups=None, filename: str = None, replace: bool = False) -> {}:
   loaded_list = load_list(filename)
   loaded_groups = get_list_of_groups_from_loaded_list(loaded_list)
-  # groups= reduce(lambda ac, v: ac +[v] if v not in ac else ac , , [])
-  # get array of existing groups.
 
+  # get array of existing groups.
   logger.debug(f'loaded_groups: {loaded_groups}')
   logger.debug(f'api groups: {api_groups}')
   newgroups = []
@@ -359,8 +351,9 @@ def process_add(apiconfig: {} = None, api_groups=None, filename: str = None, rep
       l.set_groups_id(gid)
       logger.debug(f'list to add: {l.get_url()}, {l.get_groups()}/{l.get_groups_id()}, {l.get_comment()}')
       newlists.append(l)
-      r = addList(apiconfig=apiconfig, list=l, replace=replace, )
+      r = addList(apiconfig=apiconfig, list=l, replace=replace)
       logger.debug(f'addList result: {r}')
+      logger.info(f'addlist result: id: {r["lists"][0]["id"]}, address: {r["lists"][0]["address"]}')
 
   logger.info(f'# of newLists to add: {len(newlists)}')
 
@@ -413,7 +406,6 @@ def main():
   if headers == None:
     logger.error(f'no session token found')
     sys.exit(1)
-  s.headers.update(headers)
 
   logged = True
   show_version(get_version(apiconfig=apiconfig))
