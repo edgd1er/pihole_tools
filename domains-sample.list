@@ -1,0 +1,7 @@
+#my domains
+#expected structure
+#<domain with wildcard|domain regex> <groups separated with a comma> <allow|allow-regex|deny|deny-regex> #any comment (optional)
+# if a line comment is found, it will used as default comment unless a comment is found in the structure.
+cdn.ravenjs.com allow Default #whitelist ravenjs
+(\.|^)wakanim\.tv$ deny-regex group1 #Wakanim block
+.*(twitch|twitchcdn).(com|net|tv) deny-regex Default,group1 #twitch

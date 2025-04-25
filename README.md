@@ -9,39 +9,52 @@ tools to ease pihole.net administration
 * lists are loaded as block lists.
 
 ```bash
-usage: phadlist.py [-h] [-a] [-c CONF] [-f FILE] [-r] [-R {all,mine,reset}] [-q] [-m] [-s] [-v]
+usage: phadlist.py [-h] [-l] [-L {all,mine,reset}] [-d] [-D {all,mine,reset}] [-c CONF] [-f FILE] [-r] [-q] [-m] [-s] [-v]
 
-manage lists through pihole API
+manage lists and domains through pihole API
 
 options:
   -h, --help            show this help message and exit
-  -a, --add             add or update lists found in <file>
-  -c CONF, --conf CONF  read config <file>,load <param> section
-  -f FILE, --file FILE  load lists from file
-  -r, --replace         replace if possible groups and lists
-  -R {all,mine,reset}, --remove {all,mine,reset}
+  -l, --lists           load lists found in <file>
+  -L {all,mine,reset}, --remove_lists {all,mine,reset}
                         remove lists: all, mine, reset
+  -d, --domains         load domain found in <file>
+  -D {all,mine,reset}, --remove_domains {all,mine,reset}
+                        remove domains: all, mine, reset
+  -c CONF, --conf CONF  read config <file>,load <param> section
+  -f FILE, --file FILE  load from file
+  -r, --replace         replace if possible groups and lists
   -q, --quiet           if set to true, output error only
   -m, --mail            send mail even when not run by cron
   -s, --stats           send mail with statistics
   -v, --verbose         More output.
 ```
 
-### configuration
-phadlist.ini
+### Configuration
+#### phadlist.ini
 ```ini
 [server1]
 api_url = serverA.domain.tld
 api_password = password1
 ```
 
-list format:
+#### list format:
+add, delete (all, mine, reset) urls to block or allow
 ```
 #comment add to next list of no comment found in the line itself.
 <url> group1,group2,groupe3,..... #possible comment
 # firebog tick lists
 https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt noAds,Default
 .....
+```
+
+#### domain format:
+add, delete (all, mine) domains to block or allow
+```
+<domain with wildcard|domain regex> <groups separated with a comma> <allow|allow-regex|deny|deny-regex> #any comment (optional)
+# if a line comment is found, it will used as default comment unless a comment is found in the structure.
+cdn.ravenjs.com allow Default #whitelist ravenjs
+(\.|^)wakanim\.tv$ deny-regex group1 #Wakanim block
 ```
 
 ## loadCustom.py

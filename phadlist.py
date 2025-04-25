@@ -13,6 +13,7 @@ import configparser
 import json
 import logging
 import os.path
+import re
 import socket
 import sys
 import urllib
@@ -41,11 +42,12 @@ ini_file = f'{os.path.splitext(script_name)[0]}.ini'
 
 # class
 class OneList():
-  def __init__(self, url: str, group: str = "default", comment: str = "None"):
+  def __init__(self, url: str, group: str = "default", comment: str = "None", type: str = 'block'):
     self.url: str = url
     self.group: List[str] = group.split(',')
     self.comment: str = comment
     self.groups_id: List[int] = []  # most of the time group id is not create when the file is loaded
+    self.type: str = type if type in ['allow', 'block'] else 'block'
 
   def get_url(self):
     return f'{self.url}'
@@ -61,6 +63,37 @@ class OneList():
 
   def set_groups_id(self, group_id: List[int]):
     self.groups_id = group_id
+
+  def get_type(self):
+    return self.type
+
+
+# TODO revoir type valeurs
+class OneDomain():
+  def __init__(self, domain: str = "", group: str = "default", comment: str = "None", type: str = 'deny'):
+    self.domain: str = domain
+    self.group: List[str] = group.split(',')
+    self.comment: str = comment
+    self.groups_id: List[int] = []  # most of the time group id is not create when the file is loaded
+    self.type: str = type if type in ['allow', 'allow-regex', 'deny', 'deny-regex'] else 'deny'
+
+  def get_domain(self):
+    return f'{self.domain}'
+
+  def get_groups(self):
+    return self.group
+
+  def get_comment(self):
+    return self.comment
+
+  def get_groups_id(self):
+    return self.groups_id
+
+  def set_groups_id(self, group_id: List[int]):
+    self.groups_id = group_id
+
+  def get_type(self):
+    return self.type
 
 
 # Functions
@@ -139,8 +172,8 @@ def close_session(apiconfig: {} = None, close_all: bool = False) -> {}:
   sessions = data = getpostapi(path='auth/sessions', method='get', apiconfig=apiconfig, payload={})
   logger.debug(f'active sessions: {sessions}')
   logger.info(f'active sessions before closing this one:{len(sessions['sessions'])}')
+  c = 0
   if close_all:
-    c = 0
     for s in sessions['sessions']:
       if s['current_session'] == False and 'python' in s['user_agent']:
         c += 1
@@ -152,13 +185,14 @@ def close_session(apiconfig: {} = None, close_all: bool = False) -> {}:
   logger.info(f'Closed sessions: {c + 1}')
 
 
-def get_version(apiconfig:{}=None) -> {}:
+def get_version(apiconfig: {} = None) -> {}:
   version = getpostapi(path='info/version', method='get', apiconfig=apiconfig)
   logger.debug(f'type: {type(version)}, json: {version}')
   return version
 
 
-def get_lists(apiconfig:{} = None) -> {}:
+# Lists
+def get_lists(apiconfig: {} = None) -> {}:
   data = getpostapi(path='lists', apiconfig=apiconfig, method='GET')
   lists = data['lists']
   took = data['took']
@@ -166,8 +200,9 @@ def get_lists(apiconfig:{} = None) -> {}:
   return lists
 
 
-def addList(apiconfig: {} = None, list: OneList = None, replace: bool = False) -> any:
-  payload = {'address': list.get_url(), 'type': 'block', 'groups': list.get_groups_id(), 'comment': list.get_comment(),
+def add_lists(apiconfig: {} = None, list: OneList = None, replace: bool = False) -> any:
+  payload = {'address': list.get_url(), 'type': list.get_type(), 'groups': list.get_groups_id(),
+             'comment': list.get_comment(),
              'enabled': True}
   if replace:
     logger.debug(f'Replacing list: {payload}')
@@ -179,7 +214,7 @@ def addList(apiconfig: {} = None, list: OneList = None, replace: bool = False) -
   return data
 
 
-def removeList(type: str = 'phtool', apiconfig: {} = None) -> {}:
+def remove_lists(type: str = 'phtool', apiconfig: {} = None) -> {}:
   apilists = get_lists(apiconfig=apiconfig)
   todelete = None
   if len(apilists) == 0:
@@ -210,7 +245,86 @@ def removeList(type: str = 'phtool', apiconfig: {} = None) -> {}:
   logger.info(f'{c}/{len(todelete)} deleted.')
 
 
-def get_groups(apiconfig: {} = None) -> [str]:
+# Domains
+def get_domains(apiconfig: {} = None) -> {}:
+  data = getpostapi(path='domains', apiconfig=apiconfig, method='GET')
+  domains = data['domains']
+  took = data['took']
+  logger.debug(f'# of domains: {len(domains)}, took: {took}')
+  return domains
+
+
+def get_type_kind(typekind: str = 'deny-exact') -> (str, str):
+  tmp = typekind.split('-', maxsplit=1)
+  type = tmp[0]
+  if len(tmp) == 1:
+    kind = 'exact'
+  else:
+    kind = tmp[1] if tmp[1] == 'regex' else 'exact'
+  return type, kind
+
+
+def add_domains(apiconfig: {} = None, domain: OneDomain = None, replace: bool = False) -> any:
+  type, kind = get_type_kind(domain.get_type())
+  payload = {'domain': domain.get_domain(), 'groups': domain.get_groups_id(),
+             'comment': domain.get_comment(), 'enabled': True}
+  if replace:
+    logger.debug(f'Replacing domain: {payload}')
+    data = getpostapi(path=f'domains/{type}/{kind}', method='PUT', apiconfig=apiconfig, payload=payload)
+  else:
+    logger.debug(fr'adding domain: {payload}')
+    data = getpostapi(path=f'domains/{type}/{kind}', method='POST', apiconfig=apiconfig, payload=payload)
+  logger.debug(fr'#errors: {len(data["processed"]["errors"])}, processed: {data['processed']}')
+
+  if len(data['processed']['errors']) > 0:
+    errorlist = " ".join([f'{e["item"]}: {e["error"]}' for e in data['processed']['errors']])
+    logger.error(f'error while adding domain: {errorlist}')
+  if len(data['processed']['success']) > 0:
+    successlist = " ".join([f'{e["item"]}' for e in data['processed']['success']])
+    logger.info(fr'added domain:{successlist}')
+
+  return data
+
+
+def remove_domains(type: str = 'phtool', apiconfig: {} = None) -> {}:
+  apidomains = get_domains(apiconfig=apiconfig)
+  todelete = list()
+  if len(apidomains) == 0:
+    logger.warning(f'No lists to delete.')
+    return
+
+  # logger.debug(f'apidomains: {apidomains}')
+  if type == 'mine':
+    for d in apidomains:
+      if d['comment'] is not None and d['comment'].__contains__(PHMARKER):
+        todelete.append(d)
+        logger.debug(fr'url: {d['domain']}, comment: {d["comment"]}')
+    logger.debug(fr'todelete: {todelete}')
+  if type == 'all':
+    todelete = apidomains
+
+  logger.debug(f'requested: {type}, # to delete: {len(todelete)} lists to delete: {todelete}')
+  logger.info(f'requested: {type}, # to delete: {len(todelete)}')
+  c = 0
+  items = []
+  for l in todelete:
+    payload = {'item': l['domain'], 'type': l['type'], 'kind': l['kind']}
+    items.append(payload)
+    c += 1
+  if len(items) > 0:
+    data = getpostapi(path=f'domains:batchDelete', method='POST', apiconfig=apiconfig, payload=items)
+    if data is None:
+      logger.warning(f'not deleted list: {list(map(lambda x: x["address"], items))}')
+      c = 0
+  else:
+    logger.warning(f'Nothing to delete with type {type}')
+    logger.debug(f'todelete: {todelete}')
+
+  logger.info(f'{c}/{len(todelete)} deleted.')
+
+
+# groups
+def get_groups(apiconfig: {} = None) -> {}:
   groups = getpostapi(path='groups/', apiconfig=apiconfig)
   logger.debug(f'groups: {groups}')
   ngroups = dict(map(lambda g: (g['name'], g['id']), groups['groups']))
@@ -218,7 +332,7 @@ def get_groups(apiconfig: {} = None) -> [str]:
   return ngroups
 
 
-def addGroup(groups: List[str] = None, apiconfig:{}=None) -> {}:
+def add_groups(groups: List[str] = None, apiconfig: {} = None) -> {}:
   if groups == None:
     logger.warning('No group given. Exiting')
     return
@@ -232,17 +346,7 @@ def addGroup(groups: List[str] = None, apiconfig:{}=None) -> {}:
   return r
 
 
-def addGroups(apiconfig:{}=None, groups: [] = None) -> {}:
-  if groups == None or len(groups) == 0:
-    logger.warning('No group given. Exiting')
-    return
-  payload = {'name': f'{groups}', 'comment': f'{groups} [ph5lt]', 'enabled': True}
-  r = getpostapi(path='groups', method='POST', apiconfig=apiconfig, payload=payload)
-  logger.debug(f'status: {r.status_code},text: {r.text} ')
-  return r
-
-
-def removeGroup(apiconfig:{}=None, group: str = ""):
+def remove_groups(apiconfig: {} = None, group: str = ""):
   if group == "":
     logger.warning('No group given. Exiting')
     return
@@ -263,14 +367,18 @@ def show_version(version: {} = None):
   , ftl: {version["version"]["ftl"]["local"]["version"]}/{version["version"]["ftl"]["remote"]["version"]}')
 
 
-def load_list(filename: str = None) -> List[OneList]:
-  lists = []
+def checkFile(filename: str = ''):
   if filename is None:
     logger.error(f'No file given. Exiting')
     sys.exit(-1)
   if not os.path.isfile(filename):
     logger.error(f'file not found ({filename}). Exiting')
     sys.exit(-1)
+
+
+def load_domain(filename: str = None) -> List[OneDomain]:
+  domains = []
+  checkFile(filename)
 
   logger.debug(f'Loading file: {filename}')
   with open(filename, mode="+r") as f:
@@ -285,25 +393,100 @@ def load_list(filename: str = None) -> List[OneList]:
   for line in lines:
     i += 1
     # split on spaces
-    tmp = line.split(None)
-    logger.debug(f'len: {len(tmp)}, line: {line}')
-    if line.startswith("#"):
+    tmp = line.strip('\n').split('#', maxsplit=1)
+    logger.debug(fr'len: {len(tmp)}, tmp: {tmp}, comment: {comment}, line: {line}')
+
+    domain = ''
+    type = 'deny'
+    group = 'Default'
+    # line start with #
+    if tmp[0] == '':
       comment = line
+      payload = []
     else:
+      payload = tmp[0].split(None)
+      comment = tmp[1] if len(tmp) > 1 else comment
+      domain = str(payload[0])
       # No group given, assigning to Default
-      if len(tmp) == 1:
-        tmp.append('Default')
+      if len(payload) > 1:
+        group = payload[1]
       # get comment
-      if len(tmp) > 2:
-        comment = " ".join(tmp[2:]).replace("#", "").strip()
-      l = OneList(url=tmp[0], group=tmp[1], comment=f'{PHMARKER} {comment}')
-      if l.get_url() in [ll.get_url() for ll in lists]:
-        logger.warning(f'{l.get_url()} already present.')
-      else:
-        # add object if not url is not found
-        logger.debug(f'adding list: {tmp[0]}, group: {tmp[1]}, comment: {comment}')
-        a += 1
-        lists.append(l)
+      if len(payload) >= 2:
+        # type given, get it.
+        if payload[1] in ('deny', 'allow', 'deny-regex', 'allow-regex'):
+          type = payload[1]
+          group = payload[2] if len(payload) >= 3 else group
+        else:
+          # No type, so next one is group
+          group = payload[1]
+
+    logger.debug(fr'len: {len(payload)}, payload: {payload}, comment: {comment}, line: {line}')
+    if domain != '' and domain not in [ll.get_domain() for ll in domains]:
+      logger.debug(fr'loaded domain: {domain}, type: {type}, group: {group}, comment: {comment}')
+      l = OneDomain(domain=domain, type=type, group=group, comment=f'{PHMARKER} {comment}')
+      # add object if domain is not found and not empty
+      a += 1
+      domains.append(l)
+    else:
+      logger.warning(f'domain ({domain}) already present or empty.')
+
+  logger.info(f'found {len(domains)} unique domains out of {a} lines in {os.path.basename(filename)}.')
+  return domains
+
+
+def load_list(filename: str = None) -> List[OneList]:
+  lists = []
+  checkFile(filename)
+  logger.debug(f'Loading file: {filename}')
+  with open(filename, mode="+r") as f:
+    lines = f.readlines()
+
+  if len(lines) < 1:
+    logger.error(f'No file read: {filename}')
+
+  comment = 'No comment'
+  i = 0
+  a = 0
+  for line in lines:
+    i += 1
+    # split on spaces
+    tmp = line.strip('\n').split('#', maxsplit=1)
+    logger.debug(f'len: {len(tmp)}, payload: {tmp}, comment: {comment}, line: {line}')
+
+    url = ''
+    type = 'block'
+    group = 'Default'
+    # line start with #
+    if tmp[0] == '':
+      comment = line
+      payload = []
+    else:
+      payload = tmp[0].split(None)
+      comment = tmp[1] if len(tmp) > 1 else comment
+      url = payload[0]
+      # No group given, assigning to Default
+      if len(payload) >= 1:
+        group = payload[1]
+      # get comment
+      if len(payload) >= 2:
+        # type given, get it.
+        if payload[1] in ('block', 'allow'):
+          type = payload[1]
+          group = payload[2] if len(payload) >= 3 else group
+        else:
+          # No type, so next one is group
+          group = payload[1]
+
+    logger.debug(f'len: {len(payload)}, payload: {payload}, comment: {comment}, line: {line}')
+    if url != '' and url not in [ll.get_url() for ll in lists]:
+      logger.debug(f'adding list: {url}, type: {type}, group: {group}, comment: {comment}')
+      l = OneList(url=url, type=type, group=group, comment=f'{PHMARKER} {comment}')
+      # add object if not url is not found
+      a += 1
+      lists.append(l)
+    else:
+      logger.warning(f'url ({url}) already present or empty.')
+
   logger.info(f'found {len(lists)} unique lists out of {i} lines in {os.path.basename(filename)}.')
   return lists
 
@@ -317,7 +500,7 @@ def get_list_of_groups_from_loaded_list(loaded_list):
   return list(loaded_groups)
 
 
-def process_add(apiconfig: {} = None, api_groups=None, filename: str = None, replace: bool = False) -> {}:
+def process_lists(apiconfig: {} = None, api_groups=None, filename: str = None, replace: bool = False) -> {}:
   loaded_list = load_list(filename)
   loaded_groups = get_list_of_groups_from_loaded_list(loaded_list)
 
@@ -333,7 +516,7 @@ def process_add(apiconfig: {} = None, api_groups=None, filename: str = None, rep
   logger.debug(f'new groups: {len(newgroups)}, {newgroups}')
   # create missing groups
   if len(newgroups) != 0:
-    r = addGroup(apiconfig=apiconfig, groups=newgroups)
+    r = add_groups(apiconfig=apiconfig, groups=newgroups)
     logger.debug(f'add groups result: {r}')
     # fetch new api groups
     api_groups = get_groups(apiconfig=apiconfig)
@@ -351,14 +534,64 @@ def process_add(apiconfig: {} = None, api_groups=None, filename: str = None, rep
       l.set_groups_id(gid)
       logger.debug(f'list to add: {l.get_url()}, {l.get_groups()}/{l.get_groups_id()}, {l.get_comment()}')
       newlists.append(l)
-      r = addList(apiconfig=apiconfig, list=l, replace=replace)
+      r = add_lists(apiconfig=apiconfig, list=l, replace=replace, type='block')
       logger.debug(f'addList result: {r}')
       logger.info(f'addlist result: id: {r["lists"][0]["id"]}, address: {r["lists"][0]["address"]}')
 
   logger.info(f'# of newLists to add: {len(newlists)}')
 
 
-def readInstance(config: configparser.ConfigParser, instance: str):
+def process_domains(apiconfig: {} = None, api_groups=None, filename: str = None, replace: bool = False) -> {}:
+  loaded_domains = load_domain(filename)
+  logger.debug(fr'loaded_domains: {[d.get_domain() for d in loaded_domains]}')
+  loaded_groups = get_list_of_groups_from_loaded_list(loaded_domains)
+
+  # get array of existing groups.
+  logger.debug(f'loaded_groups: {loaded_groups}')
+  logger.debug(f'api groups: {api_groups}')
+  newgroups = []
+  # create a list of not existing groups
+  for d in loaded_groups:
+    if d not in api_groups.keys():
+      newgroups.append(d)
+      logger.debug(f'new group: {d}')
+  logger.debug(f'new groups: {len(newgroups)}, {newgroups}')
+  # create missing groups
+  if len(newgroups) != 0:
+    r = add_groups(apiconfig=apiconfig, groups=newgroups)
+    logger.debug(f'add groups result: {r}')
+    # fetch new api groups
+    api_groups = get_groups(apiconfig=apiconfig)
+
+  # check for new lists
+  apidomains = get_domains(apiconfig=apiconfig)
+  newdomains = list()
+  logger.debug(f'api domains: {apidomains}')
+
+  # parse domains loaded from file.
+  for d in loaded_domains:
+    found = False
+    # search in pihole domains and compare domain, type & kind
+    for a in apidomains:
+      if a['domain'] == d.get_domain():
+        type, kind = get_type_kind(d.get_type())
+        found = type == a['type'] and kind == a['kind']
+        break
+    if not found:
+      logger.debug(fr'domain {d.get_domain()} not found, type:{d.get_type()}, found: {found}')
+      # New url found, need to add group ids:
+      gid = []
+      for g in d.get_groups():
+        gid.append(api_groups.get(g))
+      d.set_groups_id(gid)
+      logger.debug(fr'list to add: {d.get_domain()}, {d.get_groups()}/{d.get_groups_id()}, {d.get_comment()}')
+      newdomains.append(d)
+      r = add_domains(apiconfig=apiconfig, domain=d, replace=replace)
+
+  logger.info(f'# of new Domains to add: {len(newdomains)}')
+
+
+def read_instance(config: configparser.ConfigParser, instance: str):
   logger.debug(f'instance: {instance}, config: {config.sections()}')
   if instance in config.sections():  # checks if the given instance actually exists in the config file
     # read the specific config data and then convert it into an integer
@@ -375,12 +608,16 @@ def readInstance(config: configparser.ConfigParser, instance: str):
 def main():
   log_dir = f'{LDIR}/logs'
   # argParser
-  parser = argparse.ArgumentParser(description='manage lists through pihole API')
-  parser.add_argument('-a', '--add', action='store_true', help='add or update lists found in <file>')
+  parser = argparse.ArgumentParser(description='manage lists and domains through pihole API')
+  parser.add_argument('-l', '--lists', action='store_true', help='load lists found in <file>')
+  parser.add_argument('-L', '--remove_lists', choices=['all', 'mine', 'reset'], help='remove lists: all, mine, reset')
+  parser.add_argument('-d', '--domains', action='store_true', help='load domain found in <file>')
+  parser.add_argument('-D', '--remove_domains', choices=['all', 'mine'],
+                      help='remove domains: all, mine, reset')
   parser.add_argument('-c', '--conf', help='read config <file>,load <param> section')
-  parser.add_argument('-f', '--file', action='store', help='load lists from file')
+  parser.add_argument('-f', '--file', action='store', help='load from file')
   parser.add_argument('-r', '--replace', action='store_true', help='replace if possible groups and lists')
-  parser.add_argument('-R', '--remove', choices=['all', 'mine', 'reset'], help='remove lists: all, mine, reset')
+
   parser.add_argument('-q', '--quiet', action='store_true', help='if set to true, output error only')
   parser.add_argument('-m', '--mail', action='store_true', help='send mail even when not run by cron')
   parser.add_argument('-s', '--stats', action='store_true', help='send mail with statistics')
@@ -400,7 +637,7 @@ def main():
     current_svr = args.conf
 
   s = requests.session()
-  (APIURL, APIPASSWORD) = readInstance(config, current_svr)
+  (APIURL, APIPASSWORD) = read_instance(config, current_svr)
   apiconfig = {'session': s, 'fqdn': APIURL, 'timeout': 5, 'verify': True}
   headers = get_session_token(apiconfig=apiconfig, password=APIPASSWORD)
   if headers == None:
@@ -411,10 +648,16 @@ def main():
   show_version(get_version(apiconfig=apiconfig))
   groups = get_groups(apiconfig=apiconfig)
 
-  if args.add:
-    process_add(apiconfig=apiconfig, api_groups=groups, filename=args.file, replace=args.replace)
-  if args.remove:
-    removeList(apiconfig=apiconfig, type=args.remove)
+  if args.lists:
+    process_lists(apiconfig=apiconfig, api_groups=groups, filename=args.file, replace=args.replace)
+  if args.remove_lists:
+    remove_lists(apiconfig=apiconfig, type=args.remove)
+
+  if args.domains:
+    process_domains(apiconfig=apiconfig, api_groups=groups, filename=args.file, replace=args.replace)
+
+  if args.remove_domains:
+    remove_domains(apiconfig=apiconfig, type=args.remove_domains)
 
   if logged:
     data = close_session(apiconfig=apiconfig, close_all=True)
@@ -426,12 +669,12 @@ if __name__ == "__main__":
   logger = logging.getLogger(__name__)
   ## mail setings
   smtp = {
-    'from': f'{os.uname().nodename.split(".")[0]}@domain.tld',
-    'to': 'recipient@domain.tld',
-    'server': 'smtp.domain.tld',
+    'from': f'{os.uname().nodename.split(".")[0]}@mission.lan',
+    'to': 'holdom3@mission.lan',
+    'server': 'postfixlb2.mission.lan',
     'port': '465',
-    'username': 'mailuser',
-    'password': 'mailpassword'}
+    'username': 'h3user',
+    'password': 'h3password'}
 
   logger.setLevel(logging.DEBUG)
   # config read
