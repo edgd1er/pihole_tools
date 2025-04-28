@@ -68,14 +68,23 @@ class OneList():
     return self.type
 
 
-# TODO revoir type valeurs
 class OneDomain():
-  def __init__(self, domain: str = "", group: str = "default", comment: str = "None", type: str = 'deny'):
+  def __init__(self, domain: str = "", group: str = "default", comment: str = "None", type: str = 'deny',
+               status: str = "True"):
     self.domain: str = domain
     self.group: List[str] = group.split(',')
     self.comment: str = comment
     self.groups_id: List[int] = []  # most of the time group id is not create when the file is loaded
     self.type: str = type if type in ['allow', 'allow-regex', 'deny', 'deny-regex'] else 'deny'
+    self._status: str = status
+
+  @property
+  def status(self) -> bool:
+    return self._status.lower() in ["true", "1", "on", "t", "y", "yes"]
+
+  @status.setter
+  def status(self, value: str):
+    self._status = value.lower()
 
   def get_domain(self):
     return f'{self.domain}'
@@ -109,11 +118,12 @@ def getpostapi(apiconfig: {} = None, path: str = "", method: str = "get", payloa
   :return: response json or text
   """
   url = f'https://{apiconfig.get("fqdn")}/api/{path}'
-  data = {}
+  data = json.dumps(payload)
 
-  r = Request(method=method, url=url, data=json.dumps(payload))
+  r = Request(method=method, url=url, data=data)
   prepped = apiconfig.get('session').prepare_request(r)
-  logger.debug(f'method: {prepped.method}, url: {prepped.url}, headers: {prepped.headers}, data: {prepped.body}')
+  logger.debug(
+    f'method: {prepped.method}, url: {prepped.url}, headers: {prepped.headers}, data: {prepped.body} / {data}')
   try:
     resp = apiconfig.get('session').send(prepped, verify=apiconfig.get('verify'), timeout=apiconfig.get('timeout'))
   except Exception as e:
@@ -143,7 +153,7 @@ def getpostapi(apiconfig: {} = None, path: str = "", method: str = "get", payloa
     if path == 'auth':
       sys.exit(-1)
 
-  logger.debug(f'json: {data}, url: {url}, txt:{resp.text}')
+  logger.debug(f'response json: {data}, url: {url}, txt:{resp.text}')
   return data
 
 
@@ -266,12 +276,15 @@ def get_type_kind(typekind: str = 'deny-exact') -> (str, str):
 
 def add_domains(apiconfig: {} = None, domain: OneDomain = None, replace: bool = False) -> any:
   type, kind = get_type_kind(domain.get_type())
-  payload = {'domain': domain.get_domain(), 'groups': domain.get_groups_id(),
-             'comment': domain.get_comment(), 'enabled': True}
   if replace:
-    logger.debug(f'Replacing domain: {payload}')
-    data = getpostapi(path=f'domains/{type}/{kind}', method='PUT', apiconfig=apiconfig, payload=payload)
+    payload = {'type': type, 'kind': kind, 'comment': domain.get_comment(),
+               'groups': domain.get_groups_id(), 'enabled': domain.status}
+    logger.debug(fr'Replacing domain: {payload}')
+    data = getpostapi(path=f'domains/{type}/{kind}/{domain.get_domain()}', method='PUT', apiconfig=apiconfig,
+                      payload=payload)
   else:
+    payload = {'domain': domain.get_domain(), 'comment': domain.get_comment(),
+               'groups': domain.get_groups_id(), 'enabled': domain.status}
     logger.debug(fr'adding domain: {payload}')
     data = getpostapi(path=f'domains/{type}/{kind}', method='POST', apiconfig=apiconfig, payload=payload)
   logger.debug(fr'#errors: {len(data["processed"]["errors"])}, processed: {data['processed']}')
@@ -281,7 +294,7 @@ def add_domains(apiconfig: {} = None, domain: OneDomain = None, replace: bool = 
     logger.error(f'error while adding domain: {errorlist}')
   if len(data['processed']['success']) > 0:
     successlist = " ".join([f'{e["item"]}' for e in data['processed']['success']])
-    logger.info(fr'added domain:{successlist}')
+    logger.info(fr'added domain:{successlist}, status: {domain.status}')
 
   return data
 
@@ -403,6 +416,7 @@ def load_domain(filename: str = None) -> List[OneDomain]:
     if tmp[0] == '':
       comment = line
       payload = []
+      status = False
     else:
       payload = tmp[0].split(None)
       comment = tmp[1] if len(tmp) > 1 else comment
@@ -419,11 +433,12 @@ def load_domain(filename: str = None) -> List[OneDomain]:
         else:
           # No type, so next one is group
           group = payload[1]
+      status = payload[3] if len(payload) >= 4 else False
 
-    logger.debug(fr'len: {len(payload)}, payload: {payload}, comment: {comment}, line: {line}')
+    logger.debug(fr'len: {len(payload)}, payload: {payload}, comment: {comment}, status: {status}, line: {line}')
     if domain != '' and domain not in [ll.get_domain() for ll in domains]:
       logger.debug(fr'loaded domain: {domain}, type: {type}, group: {group}, comment: {comment}')
-      l = OneDomain(domain=domain, type=type, group=group, comment=f'{PHMARKER} {comment}')
+      l = OneDomain(domain=domain, type=type, group=group, comment=f'{PHMARKER} {comment}', status=status)
       # add object if domain is not found and not empty
       a += 1
       domains.append(l)
@@ -571,20 +586,25 @@ def process_domains(apiconfig: {} = None, api_groups=None, filename: str = None,
   # parse domains loaded from file.
   for d in loaded_domains:
     found = False
+    replace = False
     # search in pihole domains and compare domain, type & kind
     for a in apidomains:
       if a['domain'] == d.get_domain():
         type, kind = get_type_kind(d.get_type())
-        found = type == a['type'] and kind == a['kind']
+        found = (type == a['type'] and kind == a['kind'])
+        if d.status != a['enabled']:
+          found = False
+          replace = True
         break
     if not found:
-      logger.debug(fr'domain {d.get_domain()} not found, type:{d.get_type()}, found: {found}')
+      logger.debug(fr'domain {d.get_domain()} not found, type:{d.get_type()}, status: {d.status}')
       # New url found, need to add group ids:
       gid = []
       for g in d.get_groups():
         gid.append(api_groups.get(g))
       d.set_groups_id(gid)
-      logger.debug(fr'list to add: {d.get_domain()}, {d.get_groups()}/{d.get_groups_id()}, {d.get_comment()}')
+      logger.debug(
+        fr'list to add: {d.get_domain()}, {d.get_groups()}/{d.get_groups_id()}, {d.get_comment()}, status: {d.status}, replace: {replace}')
       newdomains.append(d)
       r = add_domains(apiconfig=apiconfig, domain=d, replace=replace)
 
