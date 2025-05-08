@@ -9,20 +9,23 @@ tools to ease pihole.net administration
 * lists are loaded as block lists.
 
 ```bash
-usage: phadlist.py [-h] [-l] [-L {all,mine,reset}] [-d] [-D {all,mine,reset}] [-c CONF] [-f FILE] [-r] [-q] [-m] [-s] [-v]
+usage: phadlist.py [-h] [-c CONF] [-l <file>] [-L {all,mine,reset}] [-d <file>] [-D {all,mine,reset}] [-k <file>] [-K <file>] [-r] [-q] [-m] [-s] [-v]
 
 manage lists and domains through pihole API
 
 options:
   -h, --help            show this help message and exit
-  -l, --lists           load lists found in <file>
+  -l FILE, --lists FILE load lists found in <file>
   -L {all,mine,reset}, --remove_lists {all,mine,reset}
                         remove lists: all, mine, reset
-  -d, --domains         load domain found in <file>
+  -k FILE, --clients FILE        load clients found in <file>
+  -K {all,mine,reset}, --remove_clients {all,mine,reset}
+                        load clients found in <file>
+  -d FILE, --domains FILE
+                        load domain found in <file>
   -D {all,mine,reset}, --remove_domains {all,mine,reset}
                         remove domains: all, mine, reset
   -c CONF, --conf CONF  read config <file>,load <param> section
-  -f FILE, --file FILE  load from file
   -r, --replace         replace if possible groups and lists
   -q, --quiet           if set to true, output error only
   -m, --mail            send mail even when not run by cron
