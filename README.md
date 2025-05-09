@@ -60,6 +60,30 @@ cdn.ravenjs.com allow Default #whitelist ravenjs
 (\.|^)wakanim\.tv$ deny-regex group1 #Wakanim block
 ```
 
+#### Suggested procedure to export, delete and import all sqlite contents.
+
+please backup you .db files, you may need them if ever this procedure fails.
+
+* Export all items
+```bash
+for i in groups clients domains lists; do ./phadlist.py -c <target_dns> -e ${i}; done 
+```
+* Delete all items (all, mine or reset). groups has to be the last to be deleted to keep structure integrity.
+```bash
+for i in K D L G; do ./phadlist.py -c <target_dns> -${i} mine; done 
+```
+* Import items in that order
+```bash
+#load groups.list and import data
+./phadlist.py -c <target_dns> -u groups -x
+#load clients.list and import data
+./phadlist.py -c <target_dns> -c clients -x
+# .list domains.list and import data
+./phadlist.py -c <target_dns> -d domains -x
+# .load list.list and import data
+./phadlist.py -c <target_dns> -l lists -x
+```
+
 ## loadCustom.py
 
 insert into pihole.toml, hosts loaded from file named custom.list
