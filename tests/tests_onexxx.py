@@ -1,7 +1,8 @@
+import logging
 import unittest
 
 import pihole.phadlist
-from pihole.phadlist import OneClient, OneDomain, OneList, OneGroup
+from pihole.phadlist import OneClient, OneDomain, OneList, OneGroup, load_groups, load_clients, load_domains, load_lists
 
 
 class TestOneXXInitAndMethods(unittest.TestCase):
@@ -40,8 +41,8 @@ class TestOneXXInitAndMethods(unittest.TestCase):
     group = "default,test"
     comment = "Comment"
     type = 'deny'
-    status = True
-    d = OneDomain(domain=domain, groups=group, comment=comment, domaintype=type, status=str(status))
+    enabled = True
+    d = OneDomain(domain=domain, groups=group, comment=comment, domaintype=type, enabled=enabled)
     groups_id = [4, 8]
     d.groups_id = groups_id
     self.assertEqual(d.domain, domain)
@@ -49,7 +50,7 @@ class TestOneXXInitAndMethods(unittest.TestCase):
     self.assertEqual(d.domaintype, type)
     self.assertEqual(d.groups, group.split(','))
     self.assertEqual(d.groups_id, groups_id)
-    self.assertEqual(d.status, status)
+    self.assertEqual(d.enabled, enabled)
 
     type = 'allow-regex'
     d.type = type
@@ -64,18 +65,19 @@ class TestOneXXInitAndMethods(unittest.TestCase):
     groups = "default,test"
     comment = "Comment"
     type = 'allow'
+    enabled = True
 
-    l = OneList(url=url, groups=groups, comment=comment, listtype=type)
+    l = OneList(url=url, groups=groups, comment=comment, listtype=type, enabled=enabled)
     self.assertEqual(l.url, url)
     self.assertEqual(l.groups, groups.split(','))
     self.assertEqual(l.comment, f'{pihole.phadlist.PHMARKER} {comment}')
     self.assertEqual(l.listtype, type)
+    self.assertEqual(l.enabled, enabled)
 
     l.listtype = 'unknown'
     self.assertEqual(l.listtype, 'block')
     l.listtype = 'block'
     self.assertEqual(l.listtype, 'block')
-
 
 if __name__ == '__main__':
   unittest.main()
