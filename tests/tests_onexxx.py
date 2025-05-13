@@ -1,23 +1,25 @@
-import logging
+import os
 import unittest
+import sys
 
-import pihole.phadlist
-from pihole.phadlist import OneClient, OneDomain, OneList, OneGroup, load_groups, load_clients, load_domains, load_lists
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/..")
+#import phadlist
+import phadlist
 
 
 class TestOneXXInitAndMethods(unittest.TestCase):
 
   def test_oneGroup(self):
     name = "myname"
-    id = 125
+    gid = 125
     comment = "Comment"
     enabled = True
 
-    l = OneGroup(groupid=id, name=name, enabled=enabled, comment=comment)
+    l = phadlist.OneGroup(groupid=gid, name=name, enabled=enabled, comment=comment)
     self.assertEqual(l.name, name)
-    self.assertEqual(l.id, id)
+    self.assertEqual(l.id, gid)
     self.assertEqual(l.enabled, enabled)
-    self.assertEqual(l.comment, f'{pihole.phadlist.PHMARKER} {comment}')
+    self.assertEqual(l.comment, f'{phadlist.PHMARKER} {comment}')
 
     l.enabled = 'unknown'
     self.assertEqual(l.enabled, False)
@@ -28,11 +30,11 @@ class TestOneXXInitAndMethods(unittest.TestCase):
     comment="comment1"
     client="client1"
     group="Default,ads"
-    c = OneClient(client=client, comment=comment, group=group)
+    c = phadlist.OneClient(client=client, comment=comment, group=group)
     groups_id = [4, 8]
     c.groups_id = groups_id
     self.assertEqual(c.client, client)
-    self.assertEqual(c.comment, f'{pihole.phadlist.PHMARKER} {comment}')
+    self.assertEqual(c.comment, f'{phadlist.PHMARKER} {comment}')
     self.assertEqual(c.groups, ["Default", "ads"])
     self.assertEqual(c.groups_id, groups_id)
 
@@ -40,38 +42,38 @@ class TestOneXXInitAndMethods(unittest.TestCase):
     domain = "mydomain"
     group = "default,test"
     comment = "Comment"
-    type = 'deny'
+    dtype = 'deny'
     enabled = True
-    d = OneDomain(domain=domain, groups=group, comment=comment, domaintype=type, enabled=enabled)
+    d = phadlist.OneDomain(domain=domain, groups=group, comment=comment, domaintype=dtype, enabled=enabled)
     groups_id = [4, 8]
     d.groups_id = groups_id
     self.assertEqual(d.domain, domain)
-    self.assertEqual(d.comment, f'{pihole.phadlist.PHMARKER} {comment}')
-    self.assertEqual(d.domaintype, type)
+    self.assertEqual(d.comment, f'{phadlist.PHMARKER} {comment}')
+    self.assertEqual(d.domaintype, dtype)
     self.assertEqual(d.groups, group.split(','))
     self.assertEqual(d.groups_id, groups_id)
     self.assertEqual(d.enabled, enabled)
 
-    type = 'allow-regex'
-    d.type = type
-    self.assertEqual(d.domaintype, type)
+    dtype = 'allow-regex'
+    d.type = dtype
+    self.assertEqual(d.domaintype, dtype)
 
-    type = 'unknown'
-    d.type = type
+    dtype = 'unknown'
+    d.type = dtype
     self.assertEqual(d.domaintype, 'deny')
 
   def test_oneList(self):
     url = "myurl"
     groups = "default,test"
     comment = "Comment"
-    type = 'allow'
+    ltype = 'allow'
     enabled = True
 
-    l = OneList(url=url, groups=groups, comment=comment, listtype=type, enabled=enabled)
+    l = phadlist.OneList(url=url, groups=groups, comment=comment, listtype=ltype, enabled=enabled)
     self.assertEqual(l.url, url)
     self.assertEqual(l.groups, groups.split(','))
-    self.assertEqual(l.comment, f'{pihole.phadlist.PHMARKER} {comment}')
-    self.assertEqual(l.listtype, type)
+    self.assertEqual(l.comment, f'{phadlist.PHMARKER} {comment}')
+    self.assertEqual(l.listtype, ltype)
     self.assertEqual(l.enabled, enabled)
 
     l.listtype = 'unknown'

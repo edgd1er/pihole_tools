@@ -20,7 +20,7 @@ import dns.resolver
 try:
   import tomlkit
 except ModuleNotFoundError:
-  print(f'apt-get install -y python3-tomlkit')
+  print('apt-get install -y python3-tomlkit')
   quit
 from tomlkit.toml_file import TOMLFile
 
@@ -30,7 +30,7 @@ except ModuleNotFoundError:
   try:
     import tomli as tomllib
   except ModuleNotFoundError:
-    print(f'pip3 install tomli')
+    print('pip3 install tomli')
     quit
 
 # Variables
@@ -102,7 +102,7 @@ def getetcdir(ymldir: str):
                            capture_output=True, text=True, shell=True)
   log.debug(f'searching in {ymldir}: {respath.stdout}')
   if respath is None:
-    log.error(f'Error when getting etc directory from /root/containers_conf/pihole/compose.yml')
+    log.error('Error when getting etc directory from /root/containers_conf/pihole/compose.yml')
     return "."
 
   log.debug(f'etc directory from /root/containers_conf/pihole/compose.yml: {respath.stdout}')
@@ -194,15 +194,15 @@ if __name__ == "__main__":
   log.setLevel(log_level)
   # logging.getLogger("urllib3").setLevel(logging.ERROR)
 
-if args.custom:
-  if not os.path.exists(piholetoml):
-    log.error(f'{piholetoml} does not exists')
-    quit()
-  piholebase = Path(piholetoml).stem
-  log.debug(f'Reading {Path(piholetoml)}')
-  pihole_string = Path(piholetoml).read_text(encoding="utf-8")
-  pihole_config = tomlkit.loads(pihole_string)
-  process_hosts()
+  if args.custom:
+    if not os.path.exists(piholetoml):
+      log.error(f'{piholetoml} does not exists')
+      quit()
+    piholebase = Path(piholetoml).stem
+    log.debug(f'Reading {Path(piholetoml)}')
+    pihole_string = Path(piholetoml).read_text(encoding="utf-8")
+    pihole_config = tomlkit.loads(pihole_string)
+    process_hosts()
 
   if args.write:
     if args.replace:
@@ -215,28 +215,28 @@ if args.custom:
     tomlfile.write(pihole_config)
     log.info(f'{action} {sfile}')
 
-if args.ping:
-  current_host = socket.gethostname()
-  log.debug(f'host: {current_host}')
-  if current_host.__contains__("holdom2"):
-    namesvr = "192.168.53.212"
-    resolveHosts(nameserver=namesvr, qType="A")
-  elif current_host.__contains__("holdom3"):
-    namesvr = "192.168.53.215"
-    resolveHosts(nameserver=namesvr, qType="A")
-  elif current_host.__contains__("omv"):
-    namesvr = "192.168.53.210"
-    resolveHosts(nameserver=namesvr, qType="A")
-  else:
-    # namesvr= "127.0.0.1"
-    # resolveHosts(nameserver=namesvr,qType="A")
-    # namesvr= "phoebe.mission.lan"
-    # resolveHosts(nameserver=namesvr,qType="A")
-    namesvr = "192.168.53.215"
-    resolveHosts(nameserver=namesvr, port=53, qType="A")
-    resolveHosts(nameserver=namesvr, port=553, qType="A")
-    namesvr = "192.168.53.212"
-    resolveHosts(nameserver=namesvr, port=53, qType="A")
-    resolveHosts(nameserver=namesvr, port=553, qType="A")
-    namesvr = "192.168.53.210"
-    resolveHosts(nameserver=namesvr, port=53, qType="A")
+  if args.ping:
+    current_host = socket.gethostname()
+    log.debug(f'host: {current_host}')
+    if current_host.__contains__("holdom2"):
+      namesvr = "192.168.53.212"
+      resolveHosts(nameserver=namesvr, qType="A")
+    elif current_host.__contains__("holdom3"):
+      namesvr = "192.168.53.215"
+      resolveHosts(nameserver=namesvr, qType="A")
+    elif current_host.__contains__("omv"):
+      namesvr = "192.168.53.210"
+      resolveHosts(nameserver=namesvr, qType="A")
+    else:
+      # namesvr= "127.0.0.1"
+      # resolveHosts(nameserver=namesvr,qType="A")
+      # namesvr= "phoebe.mission.lan"
+      # resolveHosts(nameserver=namesvr,qType="A")
+      namesvr = "192.168.53.215"
+      resolveHosts(nameserver=namesvr, port=53, qType="A")
+      resolveHosts(nameserver=namesvr, port=553, qType="A")
+      namesvr = "192.168.53.212"
+      resolveHosts(nameserver=namesvr, port=53, qType="A")
+      resolveHosts(nameserver=namesvr, port=553, qType="A")
+      namesvr = "192.168.53.210"
+      resolveHosts(nameserver=namesvr, port=53, qType="A")

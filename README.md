@@ -83,6 +83,16 @@ for i in K D L G; do ./phadlist.py -c <target_dns> -${i} mine; done
 # .load list.list and import data
 ./phadlist.py -c <target_dns> -l lists -x
 ```
+#### Run tests
+
+```bash
+make lint
+make check
+make pylama
+make tests
+
+python3 -m unittest discover -vs tests/
+```
 
 ## loadCustom.py
 
