@@ -4,6 +4,10 @@
 loadCustom.py
 - load custom.list (-c) and write (-w) to a file or (-r) to pihole.toml on remote hosts.
 - ping (-p) hosts from custom.list.
+
+apt install -y python3-tomlkit
+./loadCustom.py -crw #load custom update pihole.toml and save it
+./loadCustom.py -p -v #ping hosts listed in custom.list
 """
 
 import argparse
@@ -98,7 +102,7 @@ def process_hosts():
 
 
 def getetcdir(ymldir: str):
-  respath = subprocess.run([f'grep -o1P "([a-zA-Z0-9/_]*)(?<=etc)/?:" {ymldir}/compose.yml | sed "s/://g"'],
+  respath = subprocess.run([f'grep -o1P "([a-zA-Z0-9/_\\.]*)(?<=etc)/?:" {ymldir}/compose.yml | sed "s/://g"'],
                            capture_output=True, text=True, shell=True)
   log.debug(f'searching in {ymldir}: {respath.stdout}')
   if respath is None:
@@ -218,25 +222,14 @@ if __name__ == "__main__":
   if args.ping:
     current_host = socket.gethostname()
     log.debug(f'host: {current_host}')
-    if current_host.__contains__("holdom2"):
-      namesvr = "192.168.53.212"
-      resolveHosts(nameserver=namesvr, qType="A")
-    elif current_host.__contains__("holdom3"):
-      namesvr = "192.168.53.215"
-      resolveHosts(nameserver=namesvr, qType="A")
-    elif current_host.__contains__("omv"):
-      namesvr = "192.168.53.210"
+    if not current_host.__contains__("phoebe"):
+      namesvr = socket.gethostbyname(socket.gethostname())
       resolveHosts(nameserver=namesvr, qType="A")
     else:
-      # namesvr= "127.0.0.1"
-      # resolveHosts(nameserver=namesvr,qType="A")
-      # namesvr= "phoebe.mission.lan"
-      # resolveHosts(nameserver=namesvr,qType="A")
-      namesvr = "192.168.53.215"
-      resolveHosts(nameserver=namesvr, port=53, qType="A")
-      resolveHosts(nameserver=namesvr, port=553, qType="A")
-      namesvr = "192.168.53.212"
-      resolveHosts(nameserver=namesvr, port=53, qType="A")
-      resolveHosts(nameserver=namesvr, port=553, qType="A")
-      namesvr = "192.168.53.210"
-      resolveHosts(nameserver=namesvr, port=53, qType="A")
+      for h in [ "r2tic", "holdom2", "holdom3", "holdom4", "omv" ]:
+        namesvr = socket.gethostbyname(h)
+        resolveHosts(nameserver=namesvr, port=53, qType="A")
+        if not h in ['r2tic']:
+          resolveHosts(nameserver=namesvr, port=53, qType="A")
+          resolveHosts(nameserver=namesvr, port=54, qType="A")
+          resolveHosts(nameserver=namesvr, port=56, qType="A")

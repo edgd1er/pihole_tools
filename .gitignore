@@ -174,3 +174,21 @@ cython_debug/
 .pypirc
 
 .idea/
+
+pdomains.list
+
+clients.list
+
+*.yml
+
+domains.list
+
+custom.list
+
+groups.list
+
+gberge.list
+
+lists.list
+
+lb.list
