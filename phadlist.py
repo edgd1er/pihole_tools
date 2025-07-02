@@ -345,6 +345,9 @@ def get_version(apiconfig: {} = None) -> {}:
   logger.debug(f'type: {type(version)}, json: {version}')
   return version
 
+def update_gravity(apiconfig: {} = None,dryrun:bool=True)->None:
+  data= getpostapi(path='action/gravity', apiconfig=apiconfig, method='POST',dryrun=dryrun)
+  logger.debug(f'gravity update: {len(data)},data: {data}')
 
 # Lists
 def get_lists(apiconfig: {} = None) -> {}:
@@ -1163,6 +1166,7 @@ def main():
   parser.add_argument('-K', '--remove_clients', choices=['all', 'mine', 'reset'],
                       help='remove clients: all,mine, reset')
   parser.add_argument('-g', '--groups', action='store', help='load groups found in <file>')
+  parser.add_argument('--gravity', action='store_true', help='update gravity')
   parser.add_argument('-G', '--remove_groups', choices=['all', 'mine', 'reset'],
                       help='remove groups: all, mine, reset ')
   parser.add_argument('-u', '--update_groups', action='store', help='update groups found in <file>, no delete, no add')
@@ -1192,7 +1196,7 @@ def main():
 
   s = requests.session()
   (apiurl, apipassword) = read_instance(config, current_svr)
-  apiconfig = {'session': s, 'fqdn': apiurl, 'timeout': 5, 'verify': True}
+  apiconfig = {'session': s, 'fqdn': apiurl, 'timeout': (3.05, 27), 'verify': '/etc/ssl/certs'}
 
   if not get_session_token(apiconfig=apiconfig, password=apipassword):
     logger.error('no session token found')
@@ -1201,6 +1205,9 @@ def main():
   logged = True
   show_version(get_version(apiconfig=apiconfig))
   groups = get_groups(apiconfig=apiconfig)
+
+  if args.gravity:
+    d= update_gravity(apiconfig=apiconfig, dryrun=not args.execute)
 
   # Lists
   if args.lists:
