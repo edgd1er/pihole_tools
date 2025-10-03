@@ -75,9 +75,9 @@ for i in K D L G; do ./phadlist.py -c <target_dns> -${i} mine; done
 * Import items in that order
 ```bash
 #load groups.list and import data
-./phadlist.py -c <target_dns> -u groups -x
+./phadlist.py -c <target_dns> -u groups.list -x
 #load clients.list and import data
-./phadlist.py -c <target_dns> -c clients -x
+./phadlist.py -c <target_dns> -c clients.list -x
 # .list domains.list and import data
 ./phadlist.py -c <target_dns> -d domains -x
 # .load list.list and import data

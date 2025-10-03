@@ -6,6 +6,10 @@ phadlist.py
 - set groups and comments if given.
   https://docs.pi-hole.net/api/
   https://ftl.pi-hole.net/master/docs/
+  phpadlist.py
+
+  python3 -c 'import certifi; print(certifi.where())'
+
 """
 
 import argparse
@@ -1175,7 +1179,6 @@ def main():
                       help='export to file <name>.list, param is clients, domains, groups or lists')
   parser.add_argument('-r', '--replace', action='store_true', help='replace if possible groups and lists')
   parser.add_argument('-q', '--quiet', action='store_true', help='if set to true, output error only')
-  parser.add_argument('-m', '--mail', action='store_true', help='send mail even when not run by cron')
   parser.add_argument('-x', '--execute', action='store_true', help='execute post and delete requests')
   parser.add_argument('-s', '--stats', action='store_true', help='send mail with statistics')
   parser.add_argument('-v', '--verbose', action='store_true', help='More output.')
@@ -1262,14 +1265,6 @@ def main():
 if __name__ == "__main__":
   logging.basicConfig(format='%(asctime)s;%(levelname)s:%(name)s:%(funcName)s - %(lineno)s:%(message)s',
                       level=logging.INFO)
-  ## mail setings
-  smtp = {
-    'from': f'{os.uname().nodename.split(".")[0]}@mission.lan',
-    'to': 'holdom3@mission.lan',
-    'server': 'postfixlb2.mission.lan',
-    'port': '465',
-    'username': 'h3user',
-    'password': 'h3password'}
 
   logger.setLevel(logging.DEBUG)
   # config read
