@@ -1161,20 +1161,20 @@ def read_instance(config: configparser.ConfigParser, instance: str):
 def main():
   # argParser
   parser = argparse.ArgumentParser(description='manage lists and domains through pihole API')
-  parser.add_argument('-l', '--lists', action='store', help='load lists found in <file>')
+  parser.add_argument('-l', '--lists',  metavar='file',action='store', help='load lists found in <file>')
   parser.add_argument('-L', '--remove_lists', choices=['all', 'mine', 'reset'], help='remove lists: all, mine, reset')
   parser.add_argument('-d', '--domains', action='store', help='load domains found in <file>')
   parser.add_argument('-D', '--remove_domains', choices=['all', 'mine'],
                       help='remove domains: all, mine, reset')
-  parser.add_argument('-k', '--clients', action='store', help='load clients found in <file>')
+  parser.add_argument('-k', '--clients', metavar='file', action='store', help='load clients found in <file>')
   parser.add_argument('-K', '--remove_clients', choices=['all', 'mine', 'reset'],
                       help='remove clients: all,mine, reset')
-  parser.add_argument('-g', '--groups', action='store', help='load groups found in <file>')
+  parser.add_argument('-g', '--groups', metavar='file', action='store', help='load groups found in <file>')
   parser.add_argument('--gravity', action='store_true', help='update gravity')
   parser.add_argument('-G', '--remove_groups', choices=['all', 'mine', 'reset'],
                       help='remove groups: all, mine, reset ')
-  parser.add_argument('-u', '--update_groups', action='store', help='update groups found in <file>, no delete, no add')
-  parser.add_argument('-c', '--conf', help='read config <file>,load <param> section')
+  parser.add_argument('-u', '--update_groups', metavar='file', action='store', help='update groups found in <file>, no delete, no add')
+  parser.add_argument('-c', '--conf', metavar="file", help='read config <file>,load <param> section')
   parser.add_argument('-e', '--export', choices=['clients', 'domains', 'groups', 'lists'],
                       help='export to file <name>.list, param is clients, domains, groups or lists')
   parser.add_argument('-r', '--replace', action='store_true', help='replace if possible groups and lists')

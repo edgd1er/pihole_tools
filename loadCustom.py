@@ -7,7 +7,7 @@ loadCustom.py
 
 apt install -y python3-tomlkit
 ./loadCustom.py -crw #load custom update pihole.toml and save it
-./loadCustom.py -p -v #ping hosts listed in custom.list
+./loadCustom.py -c localhost -v #resolve hosts with given dns server listed in custom.list and compare ip
 """
 
 import argparse
@@ -137,15 +137,16 @@ def resolveHosts(nameserver: str = "127.0.0.1", port: int = 53, qType: str = "A"
     custom_hosts = (line.replace("  ", " ")).split(" ")[1:]
     custom_hosts_filtered = list(filter(lambda x: len(x) > 0, custom_hosts))
 
-    # log.debug(f'hosts: {custom_hosts_filtered}')
+    log.debug(f'hosts: {custom_hosts_filtered}')
     for idx, h in enumerate(custom_hosts_filtered):
       if (h.strip()) == "" or ((port == 553 and "mission.lan" not in h.strip() )):
         log.warning(f'{h.strip()} is not an mission.lan')
         continue
       try:
         tempIp = resolver.resolve(h, qType)
+        #log.debug(f'tempIp: {tempIp}, rrset: {tempIp.rrset}')
         ip = tempIp.rrset[0].__str__()
-        # log.info(f'{h} / {custom_ip} ?= {tempIp.response.answer[0][0]}')
+        #log.info(f'{h} / {custom_ip} ?= {tempIp.response.answer[0][0]}')
         log.debug(f'{ip_errors + ip_ok:2} {idx:2}: {h} / {custom_ip} ?= {ip}')
         # log.debug(f'resolve: {tempIp.response.answer}, rrset: {tempIp.response}')
         if custom_ip != ip:
@@ -182,7 +183,7 @@ if __name__ == "__main__":
   # argParser
   parser = argparse.ArgumentParser(description='merge custom list into pihole.toml')
   parser.add_argument('-c', '--custom', action='store_true', help='load custom.list and update hosts array.')
-  parser.add_argument('-p', '--ping', action='store_true', help='ping hosts from custom.list')
+  parser.add_argument('-C', '--check', action='extend', nargs="+", metavar="server:port",help='resolve hosts from custom.list and compare ip')
   parser.add_argument('-q', '--quiet', action='store_true', help='if set to true, output error only')
   parser.add_argument('-r', '--replace', action='store_true',
                       help='if set to true, save to same file, otherwise save as basename_new.tom file')
@@ -219,17 +220,12 @@ if __name__ == "__main__":
     tomlfile.write(pihole_config)
     log.info(f'{action} {sfile}')
 
-  if args.ping:
+  if args.check:
     current_host = socket.gethostname()
-    log.debug(f'host: {current_host}')
-    if not current_host.__contains__("phoebe"):
-      namesvr = socket.gethostbyname(socket.gethostname())
-      resolveHosts(nameserver=namesvr, qType="A")
-    else:
-      for h in [ "r2tic", "holdom2", "holdom3", "holdom4", "omv" ]:
-        namesvr = socket.gethostbyname(h)
-        resolveHosts(nameserver=namesvr, port=53, qType="A")
-        if not h in ['r2tic']:
-          resolveHosts(nameserver=namesvr, port=53, qType="A")
-          resolveHosts(nameserver=namesvr, port=54, qType="A")
-          resolveHosts(nameserver=namesvr, port=56, qType="A")
+    log.debug(f'host: {current_host}, ping args: {args.check}')
+    for h in args.check:
+      host2process = h.split(':')[0] if h.__contains__(':') else h
+      port2process = h.split(':')[1] if h.__contains__(':') else 53
+      log.debug(f'{host2process}:{port2process}')
+      namesvr = socket.gethostbyname(host2process)
+      resolveHosts(nameserver=namesvr, port=port2process, qType="A")

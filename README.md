@@ -28,8 +28,8 @@ options:
   -c CONF, --conf CONF  read config <file>,load <param> section
   -r, --replace         replace if possible groups and lists
   -q, --quiet           if set to true, output error only
-  -m, --mail            send mail even when not run by cron
-  -s, --stats           send mail with statistics
+  -C SERVER[:PORT], --check SERVER[:PORT]
+                        resolve hosts in lists and compare with expected results.
   -v, --verbose         More output.
 ```
 
@@ -107,7 +107,8 @@ merge custom list into pihole.toml
 options:
 -h, --help     show this help message and exit
 -c, --custom   load custom.list and update hosts array.
--p, --ping     ping hosts from custom.list
+ -C server:port [server:port ...], --check server:port [server:port ...]
+               resolve hosts from custom.list and compare ip
 -q, --quiet    if set to true, output error only
 -r, --replace  if set to true, save to same file, otherwise save as basename_new.tom file
 -v, --verbose  More output.
