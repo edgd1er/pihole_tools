@@ -474,7 +474,9 @@ def remove_domains(domaintype: str = 'phtool', apiconfig: {} = None, dryrun: boo
   c = 0
   items = []
   for l in todelete:
-    payload = {'item': l.domain, 'type': l.type, 'kind': l.domaintype }
+    logger.debug(f'l: {l}')
+    payload = {'item': l.get('domain'), 'type': l.get('type'), 'kind': l.get('kind') }
+    logger.debug(f'payload: {payload}')
     items.append(payload)
     c += 1
   if len(items) > 0:
@@ -1256,7 +1258,7 @@ def main():
     update_groups(apiconfig=apiconfig, groups=groups, dryrun=not args.execute, create=True)
 
   # close opened sessions
-  if logged:
+  if logged == True:
     data = close_session(apiconfig=apiconfig, close_all=True)
     logger.debug(f'session closed: {data}')
 
