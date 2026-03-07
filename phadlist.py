@@ -27,7 +27,6 @@ from requests import Request
 # Variables
 logger = logging.getLogger(__name__)
 LDIR = os.path.dirname(os.path.realpath(__file__))
-adlist = os.path.join(os.path.dirname(os.path.abspath(__file__)), "adlists.list")
 PHMARKER = '[phtool]'
 APIURL = ""
 APIPASSWORD = ""
@@ -35,6 +34,9 @@ try:
   script_name = os.path.basename(__file__)
 except NameError:
   script_name = os.path.basename(sys.argv[0])
+
+SCRIPT_DIR= os.path.dirname(os.path.abspath(__file__))
+CONF_DIR = SCRIPT_DIR + "/phadlist-conf"
 ini_file = f'{os.path.splitext(script_name)[0]}.ini'
 
 
@@ -497,7 +499,7 @@ def load_groups(filename: str = None) -> List[OneGroup]:
   check_file(filename)
 
   logger.debug(f'Loading file: {filename}')
-  with open(filename, mode="+r") as f:
+  with open(f'{CONF_DIR}{os.sep}{filename}', mode="+r") as f:
     lines = f.readlines()
 
   if len(lines) < 1:
@@ -636,7 +638,7 @@ def load_clients(filename: str = None) -> List[OneClient]:
   check_file(filename)
 
   logger.debug(f'Loading file: {filename}')
-  with open(filename, mode="+r") as f:
+  with open(f'{CONF_DIR}{os.sep}{filename}', mode="+r") as f:
     lines = f.readlines()
 
   if len(lines) < 1:
@@ -771,7 +773,7 @@ def export_lists(apiconfig):
     if len(line) > 0:
       lines.append(line)
 
-  with open(filename, 'w') as f:
+  with open(f'{CONF_DIR}{os.sep}{filename}', 'w') as f:
     f.writelines(lines)
   logger.info(f'{len(lines)} lines written to {filename}')
 
@@ -796,7 +798,7 @@ def export_domains(apiconfig: {} = None) -> None:
     if len(line) > 0:
       lines.append(line)
 
-  with open(filename, 'w') as f:
+  with open(f'{CONF_DIR}{os.sep}{filename}', 'w') as f:
     f.writelines(lines)
   logger.info(f'{len(lines)} lines written to {filename}')
 
@@ -823,7 +825,7 @@ def export_clients(apiconfig: {} = None) -> None:
     if len(line) > 1:
       lines.append(line)
 
-  with open(filename, 'w') as f:
+  with open(f'{CONF_DIR}{os.sep}{filename}', 'w') as f:
     f.writelines(lines)
   logger.info(f'{len(lines)} lines written to {filename}')
 
@@ -843,7 +845,7 @@ def export_groups(apiconfig: {} = None) -> None:
     if len(line) > 1:
       lines.append(line)
 
-  with open(filename, 'w') as f:
+  with open(f'{CONF_DIR}{os.sep}{filename}', 'w') as f:
     f.writelines(lines)
   logger.info(f'{len(lines)} lines written to {filename}')
 
@@ -863,8 +865,9 @@ def check_file(filename: str = ''):
   if filename is None:
     logger.error('No file given. Exiting')
     sys.exit(1)
-  if not os.path.isfile(filename):
-    logger.error(f'file not found ({filename}). Exiting')
+  filename_full = f'{CONF_DIR}{os.sep}{filename}'
+  if not os.path.isfile(filename_full):
+    logger.error(f'file not found ({filename_full}). Exiting')
     sys.exit(1)
 
 
@@ -873,7 +876,7 @@ def load_domains(filename: str = None) -> List[OneDomain]:
   check_file(filename)
 
   logger.debug(f'Loading file: {filename}')
-  with open(filename, mode="+r") as f:
+  with open(f'{CONF_DIR}{os.sep}{filename}', mode="+r") as f:
     lines = f.readlines()
 
   if len(lines) < 1:
@@ -931,7 +934,7 @@ def load_lists(filename: str = None) -> List[OneList]:
   lists: list[OneList] = []
   check_file(filename)
   logger.debug(f'Loading file: {filename}')
-  with open(filename, mode="+r") as f:
+  with open(f'{CONF_DIR}{os.sep}{filename}', mode="+r") as f:
     lines = f.readlines()
 
   if len(lines) < 1:
@@ -1271,12 +1274,13 @@ if __name__ == "__main__":
   logger.setLevel(logging.DEBUG)
   # config read
   config = configparser.ConfigParser()
-  ini_file_full = f'{LDIR}{os.sep}{ini_file}'
+  ini_file_full = f'{CONF_DIR}{os.sep}{ini_file}'
   if not os.path.exists(ini_file_full):
     logger.error(f'ini file not found: {ini_file_full}')
     sys.exit(1)
   logger.info(f'Read: {ini_file_full}')
   config.read(filenames=f'{ini_file_full}')
+
 
   main()
   myhost = socket.gethostname()
