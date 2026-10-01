@@ -175,22 +175,19 @@ cython_debug/
 
 .idea/
 
-pdomains.list
-
-clients.list
-
 *.yml
 
-domains.list
-
-custom.list
-
-groups.list
-
-gberge.list
-
-lists.list
-
-lb.list
-
+phadlist-conf/pdomains.list
+phadlist-conf/pclients.list
+phadlist-conf/clients.list
+phadlist-conf/domains.list
+phadlist-conf/custom.list
+phadlist-conf/groups.list
+phadlist-conf/gberge.list
+phadlist-conf/lists.list
+phadlist-conf/lb.list
 etc/
+
+powerdns-crud-conf/
+
+unbound/

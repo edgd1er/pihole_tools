@@ -19,6 +19,7 @@ import logging
 import os.path
 import socket
 import sys
+from os.path import basename
 from typing import List
 
 import requests
@@ -37,7 +38,7 @@ except NameError:
 
 SCRIPT_DIR= os.path.dirname(os.path.abspath(__file__))
 CONF_DIR = SCRIPT_DIR + "/phadlist-conf"
-ini_file = f'{os.path.splitext(script_name)[0]}.ini'
+ini_file = f'{basename(os.path.splitext(script_name)[0] + ".ini")}'
 
 
 # Classes
@@ -370,10 +371,10 @@ def add_lists(apiconfig: {} = None, olist: OneList = None, replace: bool = False
              'enabled': True}
   if replace:
     logger.debug(f'Replacing list: {payload}')
-    data = getpostapi(path='lists', method='PUT', apiconfig=apiconfig, payload=payload, dryrun=dryrun)
+    data = getpostapi(path='lists?type=' + olist.listtype, method='PUT', apiconfig=apiconfig, payload=payload, dryrun=dryrun)
   else:
     logger.debug(f'adding list: {payload}')
-    data = getpostapi(path='lists', method='POST', apiconfig=apiconfig, payload=payload, dryrun=dryrun)
+    data = getpostapi(path='lists?type=' + olist.listtype , method='POST', apiconfig=apiconfig, payload=payload, dryrun=dryrun)
   logger.debug(f'json: {data}')
   return data
 
@@ -754,7 +755,7 @@ def remove_clients(clienttype: str = 'phtool', apiconfig: {} = None, dryrun: boo
 
 # Exports
 def export_lists(apiconfig):
-  filename = f'{LDIR}{os.path.sep}lists.list'
+  filename = f'{CONF_DIR}{os.path.sep}lists.list'
   if os.path.exists(filename):
     logger.error(f'File already exists: {filename}')
     sys.exit(1)
@@ -773,13 +774,13 @@ def export_lists(apiconfig):
     if len(line) > 0:
       lines.append(line)
 
-  with open(f'{CONF_DIR}{os.sep}{filename}', 'w') as f:
+  with open(f'{filename}', 'w') as f:
     f.writelines(lines)
   logger.info(f'{len(lines)} lines written to {filename}')
 
 
 def export_domains(apiconfig: {} = None) -> None:
-  filename = f'{LDIR}{os.path.sep}domains.list'
+  filename = f'{CONF_DIR}{os.path.sep}domains.list'
   if os.path.exists(filename):
     logger.error(f'File already exists: {filename}')
     sys.exit(1)
@@ -798,13 +799,13 @@ def export_domains(apiconfig: {} = None) -> None:
     if len(line) > 0:
       lines.append(line)
 
-  with open(f'{CONF_DIR}{os.sep}{filename}', 'w') as f:
+  with open(f'{filename}', 'w') as f:
     f.writelines(lines)
   logger.info(f'{len(lines)} lines written to {filename}')
 
 
 def export_clients(apiconfig: {} = None) -> None:
-  filename = f'{LDIR}{os.path.sep}clients.list'
+  filename = f'{CONF_DIR}{os.path.sep}clients.list'
   if os.path.exists(filename):
     logger.error(f'File already exists: {filename}')
     sys.exit(1)
@@ -825,13 +826,13 @@ def export_clients(apiconfig: {} = None) -> None:
     if len(line) > 1:
       lines.append(line)
 
-  with open(f'{CONF_DIR}{os.sep}{filename}', 'w') as f:
+  with open(f'{filename}', 'w') as f:
     f.writelines(lines)
   logger.info(f'{len(lines)} lines written to {filename}')
 
 
 def export_groups(apiconfig: {} = None) -> None:
-  filename = f'{LDIR}{os.path.sep}groups.list'
+  filename = f'{CONF_DIR}{os.path.sep}groups.list'
   if os.path.exists(filename):
     logger.error(f'File already exists: {filename}')
     sys.exit(1)
@@ -845,7 +846,7 @@ def export_groups(apiconfig: {} = None) -> None:
     if len(line) > 1:
       lines.append(line)
 
-  with open(f'{CONF_DIR}{os.sep}{filename}', 'w') as f:
+  with open(f'{filename}', 'w') as f:
     f.writelines(lines)
   logger.info(f'{len(lines)} lines written to {filename}')
 
@@ -1180,7 +1181,7 @@ def main():
                       help='remove groups: all, mine, reset ')
   parser.add_argument('-u', '--update_groups', metavar='file', action='store', help='update groups found in <file>, no delete, no add')
   parser.add_argument('-c', '--conf', metavar="file", help='read config <file>,load <param> section')
-  parser.add_argument('-e', '--export', choices=['clients', 'domains', 'groups', 'lists'],
+  parser.add_argument('-e', '--export', choices=['clients', 'domains', 'groups', 'lists'], action='append',
                       help='export to file <name>.list, param is clients, domains, groups or lists')
   parser.add_argument('-r', '--replace', action='store_true', help='replace if possible groups and lists')
   parser.add_argument('-q', '--quiet', action='store_true', help='if set to true, output error only')
@@ -1241,13 +1242,14 @@ def main():
     remove_clients(apiconfig=apiconfig, clienttype=args.remove_clients, dryrun=not args.execute)
 
   # Export
-  if args.export == 'domains':
+  exports = args.export or []
+  if 'domains' in exports:
     export_domains(apiconfig=apiconfig)
-  if args.export == 'lists':
+  if 'lists' in exports:
     export_lists(apiconfig=apiconfig)
-  if args.export == 'clients':
+  if 'clients' in exports:
     export_clients(apiconfig=apiconfig)
-  if args.export == 'groups':
+  if 'groups' in exports:
     export_groups(apiconfig=apiconfig)
 
   # Groups
